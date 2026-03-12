@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import { USERS, setSession } from "../lib/data";
+import { USERS, setSession, getSession } from "../lib/data";
+import { useEffect } from "react";
 
 export default function Login() {
   const router = useRouter();
@@ -9,6 +10,17 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const session = getSession();
+    if (session) {
+      const now = Date.now();
+      if (now - session.loginTime <= 48 * 60 * 60 * 1000) {
+        if (session.role === "admin") router.push("/");
+        else router.push(`/parceiro/${session.parceiro}`);
+      }
+    }
+  }, []);
 
   const submit = () => {
     if (!email.trim() || !password.trim()) return;
@@ -20,7 +32,7 @@ export default function Login() {
       setLoading(false);
       return;
     }
-    setSession(user);
+    setSession({ ...user, loginTime: Date.now() });
     if (user.role === "admin") router.push("/");
     else router.push(`/parceiro/${user.parceiro}`);
   };
@@ -72,6 +84,12 @@ export default function Login() {
             }}>
               {loading ? "Entrando..." : "Entrar →"}
             </button>
+          </div>
+          <div style={{ marginTop: 20, background: "#10101A", border: "1px solid #1E1E2E", borderRadius: 14, padding: "16px 20px" }}>
+            <div style={{ color: "#444", fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>CREDENCIAIS</div>
+            <div style={{ color: "#555", fontSize: 12, marginBottom: 6 }}>Admin: <span style={{ color: "#ccc" }}>admin@certificapro</span></div>
+            <div style={{ color: "#555", fontSize: 12, marginBottom: 6 }}>Rafa: <span style={{ color: "#ccc" }}>admin@rafamaceno</span></div>
+            <div style={{ color: "#333", fontSize: 11, marginTop: 8 }}>Sessao expira em 48h</div>
           </div>
         </div>
       </div>
