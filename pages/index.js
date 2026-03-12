@@ -138,14 +138,8 @@ export default function Admin() {
                   <div style={{ fontSize: 30, fontWeight: 800, marginTop: 4 }}>{filtradas.length} indicacoes</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ color: "#444", fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>Concluidas</div>
-                  <div style={{ color: "#00C896", fontSize: 30, fontWeight: 800, marginTop: 4 }}>{filtradas.filter((i) => i.status === "Concluido").length}</div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {tab === "lista" && (
+                  <div style={{ color: "#444", fontSize: 11, textTransform: "uppercase", lette
+                              {tab === "lista" && (
             filtradas.length === 0 ? (
               <div style={{ textAlign: "center", padding: "80px 0", color: "#333" }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
@@ -159,12 +153,75 @@ export default function Admin() {
                     <div key={ind.id} style={{ ...card, padding: "16px 22px", display: "flex", alignItems: "center", gap: 14 }}>
                       <div style={{ width: 38, height: 38, borderRadius: 10, background: (p?.color || "#fff") + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>👤</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700 }}>{ind.nome}</div>
+                        <div style={{ fontWeight: 700 }}>{ind.nomeCompleto || ind.nome}</div>
                         <div style={{ color: "#555", fontSize: 13, marginTop: 2, display: "flex", gap: 10, flexWrap: "wrap" }}>
                           <span>{ind.telefone}</span>
                           <span style={{ color: (p?.color || "#fff") + "aa" }}>- {nomes[ind.parceiro] || p?.name}</span>
                           <span>- {ind.tipo}</span>
+                          {ind.cpf && <span>CPF: {ind.cpf}</span>}
+                          {ind.cnpj && <span>CNPJ: {ind.cnpj}</span>}
+                          {ind.razaoSocial && <span>{ind.razaoSocial}</span>}
                           {ind.obs && <span>- {ind.obs}</span>}
                         </div>
                       </div>
-                      <div style={{ display: "flex"
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <select value={ind.status} onChange={(e) => updateStatus(ind.id, e.target.value)}
+                          style={{ background: STATUS_COLORS[ind.status] + "18", border: `1px solid ${STATUS_COLORS[ind.status]}38`, color: STATUS_COLORS[ind.status], borderRadius: 8, padding: "6px 10px", fontSize: 12, cursor: "pointer", fontWeight: 700 }}>
+                          {Object.keys(STATUS_COLORS).map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <button onClick={() => del(ind.id)} style={{ background: "transparent", border: "1px solid #1A1A28", color: "#444", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>x</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          )}
+
+          {tab === "parceiros" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{ ...card, padding: 28 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+                  <h2 style={{ fontWeight: 800, fontSize: 18 }}>Nomes dos Parceiros</h2>
+                  {!editingNames
+                    ? <button onClick={() => setEditNomes(true)} style={{ background: "#1A1A28", border: "1px solid #25253A", color: "#888", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>Editar</button>
+                    : <button onClick={saveNames} style={{ background: "#00C896", border: "none", color: "#fff", borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Salvar</button>
+                  }
+                </div>
+                {PARTNERS.map((p) => (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                    {editingNames
+                      ? <input value={nomes[p.id] || ""} onChange={(e) => setNomes((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          style={{ background: "#080810", border: "1px solid #25253A", borderRadius: 8, padding: "10px 14px", color: "#fff", fontSize: 14, flex: 1, outline: "none" }} />
+                      : <span style={{ fontSize: 15, fontWeight: 600 }}>{nomes[p.id] || p.name}</span>
+                    }
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ ...card, padding: 28 }}>
+                <h2 style={{ fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Links dos Formularios</h2>
+                <p style={{ color: "#555", fontSize: 13, marginBottom: 22 }}>Envie para cada parceiro. Ao abrir, eles verao o formulario vinculado ao nome deles.</p>
+                {PARTNERS.map((p) => (
+                  <div key={p.id} style={{ background: "#080810", border: `1px solid ${p.color}25`, borderRadius: 12, padding: "16px 20px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>{nomes[p.id] || p.name}</div>
+                      <div style={{ color: p.color, fontSize: 12, fontFamily: "monospace" }}>
+                        {typeof window !== "undefined" ? window.location.origin : ""}/form/{p.id}
+                      </div>
+                    </div>
+                    <button onClick={() => copyLink(p.id)} style={{ background: copied === p.id ? "#00C89620" : p.color + "18", border: `1px solid ${copied === p.id ? "#00C89640" : p.color + "38"}`, color: copied === p.id ? "#00C896" : p.color, borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                      {copied === p.id ? "Copiado!" : "Copiar Link"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </>
+  );
+}
