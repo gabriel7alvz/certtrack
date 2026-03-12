@@ -14,9 +14,7 @@ export default function Admin() {
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(null);
   useEffect(() => {
-    
-    testarFirebase();
-    
+        
     const session = getSession();
     if (!session || session.role !== "admin") { router.push("/login"); return; }
     const now = Date.now();
