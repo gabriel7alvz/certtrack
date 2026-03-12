@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import { testarFirebase } from "../lib/testFirebase";
 import { PARTNERS, loadData, saveData, currentMonth, monthLabel, STATUS_COLORS, getSession, clearSession } from "../lib/data";
 
 export default function Admin() {
@@ -13,6 +14,9 @@ export default function Admin() {
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(null);
   useEffect(() => {
+    
+    testarFirebase();
+    
     const session = getSession();
     if (!session || session.role !== "admin") { router.push("/login"); return; }
     const now = Date.now();
