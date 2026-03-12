@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import Head from "next/head";
-import { PARTNERS, loadData, saveData, currentMonth, monthLabel, STATUS_COLORS } from "../lib/data";
+import { PARTNERS, loadData, saveData, currentMonth, monthLabel, STATUS_COLORS, getSession, clearSession } from "../lib/data";
 
 export default function Admin() {
+  const router = useRouter();
   const [data, setData] = useState({ indicacoes: [], nomes: {} });
   const [mes, setMes] = useState(currentMonth());
   const [tab, setTab] = useState("dashboard");
@@ -11,11 +13,16 @@ export default function Admin() {
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(null);
   useEffect(() => {
+    const session = getSession();
+    if (!session || session.role !== "admin") { router.push("/login"); return; }
+    const now = Date.now();
+    if (now - session.loginTime > 48 * 60 * 60 * 1000) { clearSession(); router.push("/login"); return; }
     const d = loadData();
     setData(d);
     if (d.nomes) setNomes((prev) => ({ ...prev, ...d.nomes }));
     setReady(true);
   }, []);
+  const logout = () => { clearSession(); router.push("/login"); };
   const refresh = () => { const d = loadData(); setData(d); if (d.nomes) setNomes((prev) => ({ ...prev, ...d.nomes })); };
   const saveNames = () => { const d = loadData(); d.nomes = nomes; saveData(d); setData(d); setEditNomes(false); };
   const updateStatus = (id, status) => { const d = loadData(); d.indicacoes = d.indicacoes.map((i) => (i.id === id ? { ...i, status } : i)); saveData(d); setData({ ...d }); };
@@ -43,6 +50,7 @@ export default function Admin() {
                 {meses.length === 0 && <option value={currentMonth()}>{monthLabel(currentMonth())}</option>}
                 {meses.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
               </select>
+              <button onClick={logout} style={{ background: "#1A1A28", border: "1px solid #25253A", color: "#FF4D4D", borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer" }}>Sair</button>
             </div>
           </div>
         </div>
