@@ -1,40 +1,52 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import { testarFirebase } from "../lib/testFirebase";
-import { PARTNERS, loadData, saveData, currentMonth, monthLabel, STATUS_COLORS, getSession, clearSession } from "../lib/data";
+import { PARTNERS, loadData, updateStatus, deleteIndicacao, saveNomes, currentMonth, monthLabel, STATUS_COLORS, getSession, clearSession } from "../lib/data";
 
 export default function Admin() {
   const router = useRouter();
   const [data, setData] = useState({ indicacoes: [], nomes: {} });
   const [mes, setMes] = useState(currentMonth());
   const [tab, setTab] = useState("dashboard");
-  const [nomes, setNomes] = useState({ parceiro1: "Parceiro 1", parceiro2: "Parceiro 2" });
+  const [nomes, setNomes] = useState({ rafamaceno: "Rafa Maceno", parceiro2: "Parceiro 2" });
   const [editingNames, setEditNomes] = useState(false);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(null);
+
   useEffect(() => {
-        
     const session = getSession();
     if (!session || session.role !== "admin") { router.push("/login"); return; }
-    const now = Date.now();
-    if (now - session.loginTime > 48 * 60 * 60 * 1000) { clearSession(); router.push("/login"); return; }
-    const d = loadData();
-    setData(d);
-    if (d.nomes) setNomes((prev) => ({ ...prev, ...d.nomes }));
-    setReady(true);
+    if (Date.now() - session.loginTime > 48 * 60 * 60 * 1000) { clearSession(); router.push("/login"); return; }
+    loadData().then((d) => { setData(d); if (d.nomes) setNomes((prev) => ({ ...prev, ...d.nomes })); setReady(true); });
   }, []);
+
+  const refresh = () => loadData().then((d) => { setData(d); if (d.nomes) setNomes((prev) => ({ ...prev, ...d.nomes })); });
   const logout = () => { clearSession(); router.push("/login"); };
-  const refresh = () => { const d = loadData(); setData(d); if (d.nomes) setNomes((prev) => ({ ...prev, ...d.nomes })); };
-  const saveNames = () => { const d = loadData(); d.nomes = nomes; saveData(d); setData(d); setEditNomes(false); };
-  const updateStatus = (id, status) => { const d = loadData(); d.indicacoes = d.indicacoes.map((i) => (i.id === id ? { ...i, status } : i)); saveData(d); setData({ ...d }); };
-  const del = (id) => { if (!confirm("Remover?")) return; const d = loadData(); d.indicacoes = d.indicacoes.filter((i) => i.id !== id); saveData(d); setData({ ...d }); };
+
+  const handleUpdateStatus = async (firebaseId, status) => {
+    await updateStatus(firebaseId, status);
+    setData((prev) => ({ ...prev, indicacoes: prev.indicacoes.map((i) => i._firebaseId === firebaseId ? { ...i, status } : i) }));
+  };
+
+  const handleDelete = async (firebaseId) => {
+    if (!confirm("Remover esta indicacao?")) return;
+    await deleteIndicacao(firebaseId);
+    setData((prev) => ({ ...prev, indicacoes: prev.indicacoes.filter((i) => i._firebaseId !== firebaseId) }));
+  };
+
+  const handleSaveNomes = async () => {
+    await saveNomes(nomes);
+    setEditNomes(false);
+  };
+
   const copyLink = (pid) => { navigator.clipboard.writeText(`${window.location.origin}/form/${pid}`); setCopied(pid); setTimeout(() => setCopied(null), 2000); };
   const filtradas = data.indicacoes.filter((i) => i.mes === mes);
   const meses = [...new Set(data.indicacoes.map((i) => i.mes))].sort().reverse();
   const stats = PARTNERS.map((p) => ({ ...p, label: nomes[p.id] || p.name, total: filtradas.filter((i) => i.parceiro === p.id).length, concluidas: filtradas.filter((i) => i.parceiro === p.id && i.status === "Concluido").length }));
   const card = { background: "#0E0E18", border: "1px solid #1A1A28", borderRadius: 18 };
-  if (!ready) return null;
+
+  if (!ready) return <div style={{ minHeight: "100vh", background: "#080810", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontFamily: "sans-serif" }}>Carregando...</div>;
+
   return (
     <>
       <Head><title>CertTrack - Admin</title></Head>
@@ -67,10 +79,10 @@ export default function Admin() {
               <p style={{ color: "#444", fontSize: 12, textTransform: "uppercase", letterSpacing: 1, marginBottom: 18 }}>{monthLabel(mes)}</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
                 {stats.map((p) => (
-                  <div key={p.id} style={{ ...card, padding: "26px 28px", borderColor: p.color + "28", position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: p.color + "08", pointerEvents: "none" }} />
+                  <div key={p.id} style={{ ...card, padding: "26px 28px", borderColor: p.color+"28", position: "relative", overflow: "hidden" }}>
+                    <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: p.color+"08", pointerEvents: "none" }} />
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: p.color + "20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>👤</div>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: p.color+"20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>👤</div>
                       <div><div style={{ fontWeight: 700 }}>{p.label}</div><div style={{ color: "#444", fontSize: 12 }}>Parceiro</div></div>
                     </div>
                     <div style={{ display: "flex", gap: 24 }}>
@@ -94,7 +106,7 @@ export default function Admin() {
                   {filtradas.sort((a,b) => new Date(b.data)-new Date(a.data)).map((ind) => {
                     const p = PARTNERS.find((x) => x.id === ind.parceiro);
                     return (
-                      <div key={ind.id} style={{ ...card, padding: "16px 22px", display: "flex", alignItems: "center", gap: 14 }}>
+                      <div key={ind._firebaseId} style={{ ...card, padding: "16px 22px", display: "flex", alignItems: "center", gap: 14 }}>
                         <div style={{ width: 38, height: 38, borderRadius: 10, background: (p?.color||"#fff")+"18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>👤</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 700 }}>{ind.nomeCompleto || ind.nome}</div>
@@ -109,10 +121,10 @@ export default function Admin() {
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <select value={ind.status} onChange={(e) => updateStatus(ind.id, e.target.value)} style={{ background: STATUS_COLORS[ind.status]+"18", border: `1px solid ${STATUS_COLORS[ind.status]}38`, color: STATUS_COLORS[ind.status], borderRadius: 8, padding: "6px 10px", fontSize: 12, cursor: "pointer", fontWeight: 700 }}>
+                          <select value={ind.status} onChange={(e) => handleUpdateStatus(ind._firebaseId, e.target.value)} style={{ background: STATUS_COLORS[ind.status]+"18", border: `1px solid ${STATUS_COLORS[ind.status]}38`, color: STATUS_COLORS[ind.status], borderRadius: 8, padding: "6px 10px", fontSize: 12, cursor: "pointer", fontWeight: 700 }}>
                             {Object.keys(STATUS_COLORS).map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
-                          <button onClick={() => del(ind.id)} style={{ background: "transparent", border: "1px solid #1A1A28", color: "#444", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>x</button>
+                          <button onClick={() => handleDelete(ind._firebaseId)} style={{ background: "transparent", border: "1px solid #1A1A28", color: "#444", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>x</button>
                         </div>
                       </div>
                     );
@@ -126,7 +138,7 @@ export default function Admin() {
                   <h2 style={{ fontWeight: 800, fontSize: 18 }}>Nomes dos Parceiros</h2>
                   {!editingNames
                     ? <button onClick={() => setEditNomes(true)} style={{ background: "#1A1A28", border: "1px solid #25253A", color: "#888", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" }}>Editar</button>
-                    : <button onClick={saveNames} style={{ background: "#00C896", border: "none", color: "#fff", borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Salvar</button>}
+                    : <button onClick={handleSaveNomes} style={{ background: "#00C896", border: "none", color: "#fff", borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Salvar</button>}
                 </div>
                 {PARTNERS.map((p) => (
                   <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
