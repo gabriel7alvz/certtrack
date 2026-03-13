@@ -15,18 +15,15 @@ export default function ParceiroPage() {
     if (!id) return;
     const session = getSession();
     if (!session) { router.push("/login"); return; }
-    const now = Date.now();
-    if (now - session.loginTime > 48 * 60 * 60 * 1000) { clearSession(); router.push("/login"); return; }
+    if (Date.now() - session.loginTime > 48 * 60 * 60 * 1000) { clearSession(); router.push("/login"); return; }
     if (session.role === "parceiro" && session.parceiro !== id) { router.push("/login"); return; }
-    if (session.role !== "admin" && session.role !== "parceiro") { router.push("/login"); return; }
-    const d = loadData();
-    setData(d);
-    setReady(true);
+    loadData().then((d) => { setData(d); setReady(true); });
   }, [id]);
 
   const logout = () => { clearSession(); router.push("/login"); };
+  const refresh = () => loadData().then((d) => setData(d));
 
-  if (!partner || !ready) return null;
+  if (!partner || !ready) return <div style={{ minHeight: "100vh", background: "#080810", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontFamily: "sans-serif" }}>Carregando...</div>;
 
   const c = partner.color;
   const nomeDisplay = data.nomes?.[partner.id] || partner.name;
@@ -52,7 +49,8 @@ export default function ParceiroPage() {
               <span style={{ color: "#444", fontSize: 13 }}>· Minhas Indicacoes</span>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => router.push(`/form/${id}`)} style={{ background: c + "18", border: `1px solid ${c}35`, color: c, borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>+ Nova</button>
+              <button onClick={refresh} style={{ background: "#1A1A28", border: "1px solid #25253A", color: "#888", borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer" }}>↻</button>
+              <button onClick={() => router.push(`/form/${id}`)} style={{ background: c+"18", border: `1px solid ${c}35`, color: c, borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>+ Nova</button>
               <button onClick={logout} style={{ background: "#1A1A28", border: "1px solid #25253A", color: "#FF4D4D", borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer" }}>Sair</button>
             </div>
           </div>
@@ -66,22 +64,10 @@ export default function ParceiroPage() {
             </select>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
-            <div style={{ ...card, padding: "20px 22px", borderColor: c + "28" }}>
-              <div style={{ color: c, fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{total}</div>
-              <div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>indicacoes no mes</div>
-            </div>
-            <div style={{ ...card, padding: "20px 22px", borderColor: "#00C89628" }}>
-              <div style={{ color: "#00C896", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{concluidas}</div>
-              <div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>concluidas</div>
-            </div>
-            <div style={{ ...card, padding: "20px 22px" }}>
-              <div style={{ color: "#FFB800", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{aguardando}</div>
-              <div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>aguardando</div>
-            </div>
-            <div style={{ ...card, padding: "20px 22px" }}>
-              <div style={{ color: "#4A9EFF", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{emAndamento}</div>
-              <div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>em andamento</div>
-            </div>
+            <div style={{ ...card, padding: "20px 22px", borderColor: c+"28" }}><div style={{ color: c, fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{total}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>indicacoes no mes</div></div>
+            <div style={{ ...card, padding: "20px 22px", borderColor: "#00C89628" }}><div style={{ color: "#00C896", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{concluidas}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>concluidas</div></div>
+            <div style={{ ...card, padding: "20px 22px" }}><div style={{ color: "#FFB800", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{aguardando}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>aguardando</div></div>
+            <div style={{ ...card, padding: "20px 22px" }}><div style={{ color: "#4A9EFF", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{emAndamento}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>em andamento</div></div>
           </div>
           {filtradas.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 0", color: "#333" }}>
@@ -92,7 +78,7 @@ export default function ParceiroPage() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {filtradas.sort((a,b) => new Date(b.data)-new Date(a.data)).map((ind) => (
-                <div key={ind.id} style={{ ...card, padding: "16px 20px" }}>
+                <div key={ind._firebaseId} style={{ ...card, padding: "16px 20px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>{ind.nomeCompleto || ind.nome}</div>
                     <div style={{ background: STATUS_COLORS[ind.status]+"18", border: `1px solid ${STATUS_COLORS[ind.status]}38`, color: STATUS_COLORS[ind.status], borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>{ind.status}</div>
