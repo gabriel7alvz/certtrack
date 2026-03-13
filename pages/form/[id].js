@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import { PARTNERS, loadData, saveData, currentMonth } from "../../lib/data";
+import { PARTNERS, loadData, saveIndicacao, currentMonth } from "../../lib/data";
 
 const BOTSEND_URL = "https://api.botsend.com.br/api/message/99c9217f-eb2d-4683-8204-4cbcae166c24/v2";
 const BOTSEND_TOKEN = "019ce3c9-5ded-72f6-b57c-022b6bf66752";
@@ -29,6 +29,12 @@ export default function FormPage() {
   const [obs, setObs] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [parceiroNome, setParceiroNome] = useState(partner?.name || "");
+
+  useState(() => {
+    if (!partner) return;
+    loadData().then((d) => setParceiroNome(d.nomes?.[partner.id] || partner.name));
+  }, []);
 
   if (!partner) return (<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "#555" }}>Link invalido.</p></div>);
 
@@ -39,11 +45,8 @@ export default function FormPage() {
   const submit = async () => {
     if (!allFilled) return;
     setLoading(true);
-    const data = loadData();
-    const parceiroNome = data.nomes?.[partner.id] || partner.name;
-    const ind = { id: Date.now(), parceiro: partner.id, tipo, nomeCompleto: nomeCompleto.trim(), cpf: cpf.trim(), razaoSocial: isPJ ? razaoSocial.trim() : "", cnpj: isPJ ? cnpj.trim() : "", telefone: telefone.trim(), obs: obs.trim(), mes: currentMonth(), data: new Date().toISOString(), status: "Aguardando" };
-    data.indicacoes.push(ind);
-    saveData(data);
+    const ind = { parceiro: partner.id, tipo, nomeCompleto: nomeCompleto.trim(), cpf: cpf.trim(), razaoSocial: isPJ ? razaoSocial.trim() : "", cnpj: isPJ ? cnpj.trim() : "", telefone: telefone.trim(), obs: obs.trim(), mes: currentMonth(), data: new Date().toISOString(), status: "Aguardando" };
+    await saveIndicacao(ind);
     try { await notificar(ind, parceiroNome); } catch (e) { console.error(e); }
     setNomeCompleto(""); setCpf(""); setRazaoSocial(""); setCnpj(""); setTelefone(""); setObs(""); setTipo("A1 PF");
     setSuccess(true); setLoading(false);
@@ -62,7 +65,7 @@ export default function FormPage() {
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: c + "15", border: `1px solid ${c}35`, borderRadius: 100, padding: "7px 18px", marginBottom: 20 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: c, display: "inline-block" }} />
-              <span style={{ color: c, fontSize: 12, fontWeight: 700, letterSpacing: 1.5 }}>{(loadData().nomes?.[partner.id] || partner.name).toUpperCase()}</span>
+              <span style={{ color: c, fontSize: 12, fontWeight: 700, letterSpacing: 1.5 }}>{parceiroNome.toUpperCase()}</span>
             </div>
             <h1 style={{ fontSize: 26, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>Indicar Cliente</h1>
             <p style={{ color: "#555", fontSize: 14, marginTop: 6 }}>Certificado Digital - Preencha os dados do indicado</p>
@@ -82,14 +85,11 @@ export default function FormPage() {
             <div style={{ marginBottom: 18 }}>{lbl("NOME COMPLETO")}<input type="text" value={nomeCompleto} placeholder="Ex: Maria da Silva" onChange={(e) => setNomeCompleto(e.target.value)} style={inp} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
             <div style={{ marginBottom: 18 }}>{lbl("CPF")}<input type="text" value={cpf} placeholder="000.000.000-00" onChange={(e) => setCpf(e.target.value)} style={inp} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
             <div style={{ marginBottom: 18 }}>{lbl("NUMERO PARA CONTATO")}<input type="tel" value={telefone} placeholder="(11) 99999-9999" onChange={(e) => setTelefone(e.target.value)} style={inp} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
-            <div style={{ marginBottom: 28 }}>{lbl("OBSERVACOES", true)}<textarea rows={3} value={obs} placeholder="Alguma info adicional..." onChange={(e) => setObs(e.target.value)} style={{ ...inp, resize: "vertical" }} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div><button onClick={submit} disabled={loading || !allFilled} style={{ width: "100%", padding: "15px", borderRadius: 12, border: "none", background: c, color: "#fff", fontSize: 15, fontWeight: 700, cursor: allFilled ? "pointer" : "not-allowed", letterSpacing: 0.5, transition: "opacity 0.2s", opacity: !allFilled ? 0.4 : 1 }}>
+            <div style={{ marginBottom: 28 }}>{lbl("OBSERVACOES", true)}<textarea rows={3} value={obs} placeholder="Alguma info adicional..." onChange={(e) => setObs(e.target.value)} style={{ ...inp, resize: "vertical" }} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
+            <button onClick={submit} disabled={loading || !allFilled} style={{ width: "100%", padding: "15px", borderRadius: 12, border: "none", background: c, color: "#fff", fontSize: 15, fontWeight: 700, cursor: allFilled ? "pointer" : "not-allowed", letterSpacing: 0.5, transition: "opacity 0.2s", opacity: !allFilled ? 0.4 : 1 }}>
               {loading ? "Enviando..." : "Registrar Indicacao ->"}
             </button>
-            {success && (
-              <div style={{ marginTop: 14, background: "#00C89618", border: "1px solid #00C89635", borderRadius: 10, padding: "13px 16px", color: "#00C896", textAlign: "center", fontSize: 14, fontWeight: 600 }}>
-                Indicacao registrada com sucesso!
-              </div>
-            )}
+            {success && (<div style={{ marginTop: 14, background: "#00C89618", border: "1px solid #00C89635", borderRadius: 10, padding: "13px 16px", color: "#00C896", textAlign: "center", fontSize: 14, fontWeight: 600 }}>Indicacao registrada com sucesso!</div>)}
           </div>
         </div>
       </div>
