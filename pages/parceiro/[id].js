@@ -23,49 +23,48 @@ export default function ParceiroPage() {
   const logout = () => { clearSession(); router.push("/login"); };
   const refresh = () => loadData().then((d) => setData(d));
 
-  if (!partner || !ready) return <div style={{ minHeight: "100vh", background: "#080810", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontFamily: "sans-serif" }}>Carregando...</div>;
+  if (!partner || !ready) return <div style={{ minHeight: "100vh", background: "#060810", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontFamily: "sans-serif" }}>Carregando...</div>;
 
-  const c = partner.color;
+  const c = "#4CAF50";
   const nomeDisplay = data.nomes?.[partner.id] || partner.name;
   const todasMinhas = data.indicacoes.filter((i) => i.parceiro === partner.id);
   const meses = [...new Set(todasMinhas.map((i) => i.mes))].sort().reverse();
   const filtradas = todasMinhas.filter((i) => i.mes === mes);
   const total = filtradas.length;
-  const concluidas = filtradas.filter((i) => i.status === "Concluido").length;
+  const concluidas = filtradas.filter((i) => i.status === "Certificado emitido").length;
   const aguardando = filtradas.filter((i) => i.status === "Aguardando").length;
-  const emAndamento = filtradas.filter((i) => i.status === "Em andamento").length;
-  const card = { background: "#10101A", border: "1px solid #1E1E2E", borderRadius: 16 };
+  const emAndamento = filtradas.filter((i) => i.status === "Em contato" || i.status === "Agendado" || i.status === "Aguardando informacoes").length;
+  const card = { background: "#0E1018", border: "1px solid #1A2030", borderRadius: 16 };
 
   return (
     <>
       <Head><title>{nomeDisplay} - Minhas Indicacoes</title></Head>
-      <div style={{ minHeight: "100vh", background: "#080810", fontFamily: "'Syne', sans-serif" }}>
+      <div style={{ minHeight: "100vh", background: "#060810", fontFamily: "'Syne', sans-serif" }}>
         <div style={{ position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)", width: 600, height: 300, borderRadius: "50%", background: `radial-gradient(ellipse, ${c}12 0%, transparent 70%)`, pointerEvents: "none", zIndex: 0 }} />
-        <div style={{ background: "#0E0E18", borderBottom: "1px solid #1A1A28", padding: "0 24px", position: "relative", zIndex: 1 }}>
-          <div style={{ maxWidth: 600, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ background: "#0E1018", borderBottom: "1px solid #1A2030", padding: "0 24px", position: "relative", zIndex: 1 }}>
+          <div style={{ maxWidth: 600, margin: "0 auto", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} />
-              <span style={{ fontWeight: 800, fontSize: 15, color: "#fff" }}>{nomeDisplay}</span>
-              <span style={{ color: "#444", fontSize: 13 }}>· Minhas Indicacoes</span>
+              <img src="https://i.imgur.com/yWLzf1T.jpeg" alt="CertificaPro" style={{ height: 32, objectFit: "contain", borderRadius: 4 }} />
+              <span style={{ color: "#444", fontSize: 13 }}>· {nomeDisplay}</span>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={refresh} style={{ background: "#1A1A28", border: "1px solid #25253A", color: "#888", borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer" }}>↻</button>
+              <button onClick={refresh} style={{ background: "#1A2030", border: "1px solid #252535", color: "#888", borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer" }}>↻</button>
               <button onClick={() => router.push(`/form/${id}`)} style={{ background: c+"18", border: `1px solid ${c}35`, color: c, borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>+ Nova</button>
-              <button onClick={logout} style={{ background: "#1A1A28", border: "1px solid #25253A", color: "#FF4D4D", borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer" }}>Sair</button>
+              <button onClick={logout} style={{ background: "#1A2030", border: "1px solid #252535", color: "#FF4D4D", borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer" }}>Sair</button>
             </div>
           </div>
         </div>
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 24px", position: "relative", zIndex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
             <p style={{ color: "#444", fontSize: 12, textTransform: "uppercase", letterSpacing: 1 }}>{monthLabel(mes)}</p>
-            <select value={mes} onChange={(e) => setMes(e.target.value)} style={{ background: "#1A1A28", border: "1px solid #25253A", color: "#ccc", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            <select value={mes} onChange={(e) => setMes(e.target.value)} style={{ background: "#1A2030", border: "1px solid #252535", color: "#ccc", borderRadius: 8, padding: "6px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
               {meses.length === 0 && <option value={currentMonth()}>{monthLabel(currentMonth())}</option>}
               {meses.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
             </select>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
             <div style={{ ...card, padding: "20px 22px", borderColor: c+"28" }}><div style={{ color: c, fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{total}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>indicacoes no mes</div></div>
-            <div style={{ ...card, padding: "20px 22px", borderColor: "#00C89628" }}><div style={{ color: "#00C896", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{concluidas}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>concluidas</div></div>
+            <div style={{ ...card, padding: "20px 22px", borderColor: "#4CAF5028" }}><div style={{ color: "#4CAF50", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{concluidas}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>emitidos</div></div>
             <div style={{ ...card, padding: "20px 22px" }}><div style={{ color: "#FFB800", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{aguardando}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>aguardando</div></div>
             <div style={{ ...card, padding: "20px 22px" }}><div style={{ color: "#4A9EFF", fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{emAndamento}</div><div style={{ color: "#555", fontSize: 13, marginTop: 6 }}>em andamento</div></div>
           </div>
@@ -81,10 +80,11 @@ export default function ParceiroPage() {
                 <div key={ind._firebaseId} style={{ ...card, padding: "16px 20px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>{ind.nomeCompleto || ind.nome}</div>
-                    <div style={{ background: STATUS_COLORS[ind.status]+"18", border: `1px solid ${STATUS_COLORS[ind.status]}38`, color: STATUS_COLORS[ind.status], borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>{ind.status}</div>
+                    <div style={{ background: (STATUS_COLORS[ind.status]||"#888")+"18", border: `1px solid ${(STATUS_COLORS[ind.status]||"#888")}38`, color: STATUS_COLORS[ind.status]||"#888", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>{ind.status}</div>
                   </div>
                   <div style={{ color: "#555", fontSize: 13, display: "flex", gap: 12, flexWrap: "wrap" }}>
                     <span>{ind.telefone}</span>
+                    {ind.email && <span>· {ind.email}</span>}
                     <span>· {ind.tipo}</span>
                     {ind.cpf && <span>· CPF: {ind.cpf}</span>}
                     {ind.cnpj && <span>· CNPJ: {ind.cnpj}</span>}
