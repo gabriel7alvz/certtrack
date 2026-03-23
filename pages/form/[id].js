@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { PARTNERS, loadData, saveIndicacao, currentMonth } from "../../lib/data";
@@ -8,7 +8,7 @@ const BOTSEND_TOKEN = "019ce3c9-5ded-72f6-b57c-022b6bf66752";
 const NOTIFY_NUMBER = "5518996676744";
 
 async function notificar(ind, parceiroNome) {
-  const texto = `Nova Indicacao Recebida!\n\nNome: ${ind.nomeCompleto}\nContato: ${ind.telefone}\nTipo: ${ind.tipo}${ind.cpf ? `\nCPF: ${ind.cpf}` : ""}${ind.cnpj ? `\nCNPJ: ${ind.cnpj}` : ""}${ind.razaoSocial ? `\nRazao Social: ${ind.razaoSocial}` : ""}${ind.obs ? `\nObs: ${ind.obs}` : ""}\n\nParceiro: ${parceiroNome}`;
+  const texto = `Nova Indicacao Recebida!\n\nNome: ${ind.nomeCompleto}\nEmail: ${ind.email}\nContato: ${ind.telefone}\nTipo: ${ind.tipo}${ind.cpf ? `\nCPF: ${ind.cpf}` : ""}${ind.cnpj ? `\nCNPJ: ${ind.cnpj}` : ""}${ind.razaoSocial ? `\nRazao Social: ${ind.razaoSocial}` : ""}${ind.obs ? `\nObs: ${ind.obs}` : ""}\n\nParceiro: ${parceiroNome}`;
   await fetch(BOTSEND_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${BOTSEND_TOKEN}` },
@@ -26,12 +26,13 @@ export default function FormPage() {
   const [razaoSocial, setRazaoSocial] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [email, setEmail] = useState("");
   const [obs, setObs] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [parceiroNome, setParceiroNome] = useState(partner?.name || "");
 
-  useState(() => {
+  useEffect(() => {
     if (!partner) return;
     loadData().then((d) => setParceiroNome(d.nomes?.[partner.id] || partner.name));
   }, []);
@@ -40,15 +41,15 @@ export default function FormPage() {
 
   const c = partner.color;
   const isPJ = tipo === "A1 PJ";
-  const allFilled = nomeCompleto.trim() && telefone.trim() && cpf.trim() && (!isPJ || (razaoSocial.trim() && cnpj.trim()));
+  const allFilled = nomeCompleto.trim() && telefone.trim() && cpf.trim() && email.trim() && (!isPJ || (razaoSocial.trim() && cnpj.trim()));
 
   const submit = async () => {
     if (!allFilled) return;
     setLoading(true);
-    const ind = { parceiro: partner.id, tipo, nomeCompleto: nomeCompleto.trim(), cpf: cpf.trim(), razaoSocial: isPJ ? razaoSocial.trim() : "", cnpj: isPJ ? cnpj.trim() : "", telefone: telefone.trim(), obs: obs.trim(), mes: currentMonth(), data: new Date().toISOString(), status: "Aguardando" };
+    const ind = { parceiro: partner.id, tipo, nomeCompleto: nomeCompleto.trim(), cpf: cpf.trim(), email: email.trim(), razaoSocial: isPJ ? razaoSocial.trim() : "", cnpj: isPJ ? cnpj.trim() : "", telefone: telefone.trim(), obs: obs.trim(), mes: currentMonth(), data: new Date().toISOString(), status: "Aguardando" };
     await saveIndicacao(ind);
     try { await notificar(ind, parceiroNome); } catch (e) { console.error(e); }
-    setNomeCompleto(""); setCpf(""); setRazaoSocial(""); setCnpj(""); setTelefone(""); setObs(""); setTipo("A1 PF");
+    setNomeCompleto(""); setCpf(""); setRazaoSocial(""); setCnpj(""); setTelefone(""); setEmail(""); setObs(""); setTipo("A1 PF");
     setSuccess(true); setLoading(false);
     setTimeout(() => setSuccess(false), 4000);
   };
@@ -61,7 +62,7 @@ export default function FormPage() {
       <Head><title>Indicar Cliente</title></Head>
       <div style={{ minHeight: "100vh", background: "#080810", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "'Syne', sans-serif" }}>
         <div style={{ position: "fixed", top: "10%", left: "50%", transform: "translateX(-50%)", width: 600, height: 300, borderRadius: "50%", background: `radial-gradient(ellipse, ${c}18 0%, transparent 70%)`, pointerEvents: "none", zIndex: 0 }} />
-        <div className="fadeUp" style={{ width: "100%", maxWidth: 480, position: "relative", zIndex: 1 }}>
+        <div style={{ width: "100%", maxWidth: 480, position: "relative", zIndex: 1 }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: c + "15", border: `1px solid ${c}35`, borderRadius: 100, padding: "7px 18px", marginBottom: 20 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: c, display: "inline-block" }} />
@@ -85,6 +86,7 @@ export default function FormPage() {
             <div style={{ marginBottom: 18 }}>{lbl("NOME COMPLETO")}<input type="text" value={nomeCompleto} placeholder="Ex: Maria da Silva" onChange={(e) => setNomeCompleto(e.target.value)} style={inp} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
             <div style={{ marginBottom: 18 }}>{lbl("CPF")}<input type="text" value={cpf} placeholder="000.000.000-00" onChange={(e) => setCpf(e.target.value)} style={inp} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
             <div style={{ marginBottom: 18 }}>{lbl("NUMERO PARA CONTATO")}<input type="tel" value={telefone} placeholder="(11) 99999-9999" onChange={(e) => setTelefone(e.target.value)} style={inp} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
+            <div style={{ marginBottom: 18 }}>{lbl("E-MAIL")}<input type="email" value={email} placeholder="exemplo@email.com" onChange={(e) => setEmail(e.target.value)} style={inp} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
             <div style={{ marginBottom: 28 }}>{lbl("OBSERVACOES", true)}<textarea rows={3} value={obs} placeholder="Alguma info adicional..." onChange={(e) => setObs(e.target.value)} style={{ ...inp, resize: "vertical" }} onFocus={(e) => (e.target.style.borderColor = c)} onBlur={(e) => (e.target.style.borderColor = "#25253A")} /></div>
             <button onClick={submit} disabled={loading || !allFilled} style={{ width: "100%", padding: "15px", borderRadius: 12, border: "none", background: c, color: "#fff", fontSize: 15, fontWeight: 700, cursor: allFilled ? "pointer" : "not-allowed", letterSpacing: 0.5, transition: "opacity 0.2s", opacity: !allFilled ? 0.4 : 1 }}>
               {loading ? "Enviando..." : "Registrar Indicacao ->"}
