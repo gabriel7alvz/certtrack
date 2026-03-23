@@ -10,6 +10,7 @@ const COLUNAS = [
   { id: "Aguardando informacoes", label: "Aguard. Informações", color: "#A78BFA" },
   { id: "Agendado", label: "Agendado", color: "#F97316" },
   { id: "Certificado emitido", label: "Cert. Emitido", color: "#00C896" },
+  { id: "Concluido", label: "Concluído", color: "#00C896" },
 ];
 
 const STATUS_COLORS = {
@@ -18,6 +19,7 @@ const STATUS_COLORS = {
   "Aguardando informacoes": "#A78BFA",
   "Agendado": "#F97316",
   "Certificado emitido": "#00C896",
+  "Concluido": "#00C896",
   "Cancelado": "#FF4D4D",
 };
 
