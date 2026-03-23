@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { PARTNERS, loadData, updateStatus, deleteIndicacao, saveNomes, currentMonth, monthLabel, getSession, clearSession } from "../lib/data";
-
+ 
 const COLUNAS = [
   { id: "Aguardando", label: "Aguardando", color: "#FFB800" },
   { id: "Em contato", label: "Em contato", color: "#4A9EFF" },
