@@ -81,13 +81,26 @@ export default function Admin() {
   };
 
 const filtradas = data.indicacoes.filter(i => {
+    // CORREÇÃO: Verifica se o item existe e se tem o campo data
     if (!i || !i.data) return false;
-    let d = (typeof i.data === "object" && i.data.seconds) 
-      ? new Date(i.data.seconds * 1000) 
-      : new Date(i.data);
-    
+
+    let d;
+    if (typeof i.data === "object" && i.data.seconds) {
+      d = new Date(i.data.seconds * 1000);
+    } else {
+      d = new Date(i.data);
+    }
+
     if (isNaN(d.getTime())) return false;
-    const dataFormatada = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+    const ano = d.getFullYear();
+    const mesItem = String(d.getMonth() + 1).padStart(2, "0");
+    const dataFormatada = `${ano}-${mesItem}`;
+
+    // ESTA LINHA É PARA VOCÊ TESTAR:
+    // Abra o site, aperte F12, vá em 'Console' e veja se os valores batem.
+    console.log("Item:", dataFormatada, "Filtro Selecionado:", mes);
+
     return dataFormatada === mes;
   });
 
