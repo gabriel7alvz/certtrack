@@ -106,13 +106,19 @@ const filtradas = data.indicacoes.filter(i => {
 
   const canceladas = filtradas.filter(i => i.status === "Cancelado");
 
-  const meses = [...new Set(data.indicacoes.map(i => {
-    if (!i.data) return null;
-    let d = (typeof i.data === "object" && i.data.seconds) 
-      ? new Date(i.data.seconds * 1000) 
-      : new Date(i.data);
-    return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  }))].filter(Boolean).sort().reverse();
+  // Força o mês atual (ex: 2026-04) a estar sempre na lista
+  const mesAtual = new Date().toISOString().slice(0, 7);
+
+  const meses = [...new Set([
+    mesAtual, 
+    ...data.indicacoes.map(i => {
+      if (!i.data) return null;
+      let d = (typeof i.data === "object" && i.data.seconds) 
+        ? new Date(i.data.seconds * 1000) 
+        : new Date(i.data);
+      return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    })
+  ])].filter(Boolean).sort().reverse();
   // -------------------------------------------------------
 
   const cardStyle = { background: "#fff", border: "1px solid #E0E7E0", borderRadius: 18, boxShadow: "0 1px 4px #1B2E4B0A" };
