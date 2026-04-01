@@ -80,9 +80,29 @@ export default function Admin() {
     setCancelMotivo("");
   };
 
-  const filtradas = data.indicacoes.filter(i => i.mes === mes);
+const filtradas = data.indicacoes.filter(i => {
+    if (!i || !i.data) return false;
+    let d = (typeof i.data === "object" && i.data.seconds) 
+      ? new Date(i.data.seconds * 1000) 
+      : new Date(i.data);
+    
+    if (isNaN(d.getTime())) return false;
+    const dataFormatada = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return dataFormatada === mes;
+  });
+
   const canceladas = filtradas.filter(i => i.status === "Cancelado");
-  const meses = [...new Set(data.indicacoes.map(i => i.mes))].sort().reverse();
+
+  const meses = [...new Set(data.indicacoes.map(i => {
+    if (!i.data) return null;
+    let d = (typeof i.data === "object" && i.data.seconds) 
+      ? new Date(i.data.seconds * 1000) 
+      : new Date(i.data);
+    return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }))].filter(Boolean).sort().reverse();
+  // -------------------------------------------------------
+
+  const cardStyle = { background: "#fff", border: "1px solid #E0E7E0", borderRadius: 18, boxShadow: "0 1px 4px #1B2E4B0A" };
   const cardStyle = { background: "#fff", border: "1px solid #E0E7E0", borderRadius: 18, boxShadow: "0 1px 4px #1B2E4B0A" };
 
   if (!ready) return (
