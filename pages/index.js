@@ -71,29 +71,35 @@ export default function Admin() {
   };
 
 const filtradas = data.indicacoes.filter(i => {
-  if (!i.data) return false;
+  try {
+    if (!i || !i.data) return false;
 
-  let d;
+    let d;
 
-  if (typeof i.data === "object" && i.data.seconds) {
-    d = new Date(i.data.seconds * 1000);
-  } else {
-    d = new Date(i.data);
+    if (typeof i.data === "object" && i.data.seconds) {
+      d = new Date(i.data.seconds * 1000);
+    } else {
+      d = new Date(i.data);
+    }
+
+    if (!d || isNaN(d.getTime())) return false;
+
+    const mesesNomes = [
+      "janeiro","fevereiro","março","abril","maio","junho",
+      "julho","agosto","setembro","outubro","novembro","dezembro"
+    ];
+
+    const mesNome = mesesNomes[d.getMonth()];
+    const ano = d.getFullYear();
+
+    const labelItem = `${mesNome} de ${ano}`;
+
+    return labelItem === mes.toLowerCase();
+
+  } catch (e) {
+    console.log("erro no item:", i);
+    return false;
   }
-
-  if (isNaN(d)) return false;
-
-  const mesesNomes = [
-    "janeiro","fevereiro","março","abril","maio","junho",
-    "julho","agosto","setembro","outubro","novembro","dezembro"
-  ];
-
-  const mesNome = mesesNomes[d.getMonth()];
-  const ano = d.getFullYear();
-
-  const labelItem = `${mesNome} de ${ano}`;
-
-  return labelItem === mes.toLowerCase();
 });
 
   if (!ready) return <div style={{ minHeight: "100vh", background: "#F0F4F0",
