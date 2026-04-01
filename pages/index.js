@@ -103,7 +103,6 @@ const filtradas = data.indicacoes.filter(i => {
   // -------------------------------------------------------
 
   const cardStyle = { background: "#fff", border: "1px solid #E0E7E0", borderRadius: 18, boxShadow: "0 1px 4px #1B2E4B0A" };
-  const cardStyle = { background: "#fff", border: "1px solid #E0E7E0", borderRadius: 18, boxShadow: "0 1px 4px #1B2E4B0A" };
 
   if (!ready) return (
     <div style={{ minHeight: "100vh", background: "#F0F4F0", display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>
