@@ -111,25 +111,26 @@ if (i.data?.seconds) {
   const canceladas = filtradas.filter(i => i.status === "Cancelado");
 
   // Força o mês atual (ex: 2026-04) a estar sempre na lista
-  const mesAtual = new Date().toISOString().slice(0, 7);
+const mesAtual = new Date().toISOString().slice(0, 7);
 
-  const meses = [...new Set([
-    mesAtual, 
-    ...data.indicacoes.map(i => {
-      if (!i.data) return null;
-      let d = (typeof i.data === "object" && i.data.seconds) 
-        ? new Date(i.data.seconds * 1000) 
-        : new Date(i.data);
-      console.log("VALOR BRUTO:", i.data)
+const meses = [...new Set([
+  mesAtual,
+  ...data.indicacoes.map((i) => {
+    let d;
 
-let d;
-if (typeof i.data === "object" && i.data.seconds) {
-  d = new Date(i.data.seconds * 1000);
-} else {
-  d = new Date(i.data);
-}
+    if (typeof i.data === "object" && i.data.seconds) {
+      d = new Date(i.data.seconds * 1000);
+    } else {
+      d = new Date(i.data);
+    }
 
-console.log("DATA CONVERTIDA:", d, "VÁLIDA?", !isNaN(d.getTime()));
+    console.log("DATA CONVERTIDA:", d, "VÁLIDA?", !isNaN(d.getTime()));
+
+    return isNaN(d.getTime())
+      ? null
+      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  })
+])].filter(Boolean).sort().reverse();
 
 return isNaN(d.getTime())
   ? null
