@@ -111,26 +111,43 @@ if (i.data?.seconds) {
   const canceladas = filtradas.filter(i => i.status === "Cancelado");
 
   // Força o mês atual (ex: 2026-04) a estar sempre na lista
-const mesAtual = new Date().toISOString().slice(0, 7);
+const now = new Date();
+const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-const meses = [...new Set([
-  mesAtual,
-  ...data.indicacoes.map((i) => {
-    let d;
+const meses = [
+  ...new Set([
+    mesAtual,
+    ...data.indicacoes.map((i) => {
+      let d = null;
 
-    if (typeof i.data === "object" && i.data.seconds) {
-      d = new Date(i.data.seconds * 1000);
-    } else {
-      d = new Date(i.data);
-    }
+      if (i?.data?.seconds) {
+        // Firebase Timestamp
+        d = new Date(i.data.seconds * 1000);
+      } else if (typeof i.data === "string") {
+        // tenta converter string
+        if (i.data.includes("/")) {
+          // formato BR: dd/mm/yyyy
+          const [dia, mes, ano] = i.data.split("/");
+          d = new Date(`${ano}-${mes}-${dia}`);
+        } else {
+          d = new Date(i.data);
+        }
+      } else if (i.data instanceof Date) {
+        d = i.data;
+      }
 
-    console.log("DATA CONVERTIDA:", d, "VÁLIDA?", !isNaN(d.getTime()));
+      console.log("DATA ORIGINAL:", i.data);
+      console.log("DATA CONVERTIDA:", d, "VÁLIDA?", d && !isNaN(d.getTime()));
 
-    return isNaN(d.getTime())
-      ? null
-      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  })
-])].filter(Boolean).sort().reverse();
+      if (!d || isNaN(d.getTime())) return null;
+
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    }),
+  ]),
+]
+  .filter(Boolean)
+  .sort()
+  .reverse();
 
 return isNaN(d.getTime())
   ? null
