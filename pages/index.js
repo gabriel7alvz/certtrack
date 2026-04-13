@@ -129,10 +129,11 @@ if (typeof i.data === "object" && i.data.seconds) {
   d = new Date(i.data);
 }
 
-console.log("DATA CONVERTIDA:", d, "VÁLIDA?", !isNaN(d.getTime()))return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    })
-  ])].filter(Boolean).sort().reverse();
-  // -------------------------------------------------------
+console.log("DATA CONVERTIDA:", d, "VÁLIDA?", !isNaN(d.getTime()));
+
+return isNaN(d.getTime())
+  ? null
+  : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
   const cardStyle = { background: "#fff", border: "1px solid #E0E7E0", borderRadius: 18, boxShadow: "0 1px 4px #1B2E4B0A" };
   if (!ready) return (
