@@ -94,8 +94,9 @@ if (i.data?.seconds) {
   return null;
 }
 
-    if (isNaN(d.getTime())) return false;
-
+    if (isNaN(d.getTime())) 
+      
+    return false;
     const ano = d.getFullYear();
     const mesItem = String(d.getMonth() + 1).padStart(2, "0");
     const dataFormatada = `${ano}-${mesItem}`;
