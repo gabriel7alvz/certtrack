@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
+
 import { useRouter } from "next/router";
+
 import Head from "next/head";
+
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
 import { PARTNERS, loadData, updateStatus, deleteIndicacao, saveNomes, currentMonth, monthLabel, getSession, clearSession } from "../lib/data";
 
 const COLUNAS = [
@@ -11,6 +15,90 @@ const COLUNAS = [
   { id: "Agendado", label: "Agendado", color: "#E65100", bg: "#FFF3E0", border: "#FFCC80" },
   { id: "Certificado emitido", label: "Cert. Emitido", color: "#2E7D32", bg: "#F0F9F0", border: "#C8E6C9" },
 ];
+
+/**
+ * Converte qualquer formato de data suportado para um objeto Date local.
+ * Suporta:
+ *   - Firebase Timestamp: { seconds: number }
+ *   - String BR: "dd/mm/yyyy"
+ *   - String ISO: "yyyy-mm-dd" ou "yyyy-mm-ddTHH:MM:SSZ"
+ *   - Número (ms desde epoch)
+ *   - Objeto Date nativo
+ * Retorna null se o valor for inválido.
+ */
+function parseDate(value) {
+  if (!value) return null;
+
+  // Firebase Timestamp
+  if (value && typeof value === "object" && typeof value.seconds === "number") {
+    const d = new Date(value.seconds * 1000);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Objeto Date nativo
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? null : value;
+  }
+
+  // Número (epoch ms)
+  if (typeof value === "number") {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    // Formato BR: dd/mm/yyyy ou dd/mm/yyyy HH:MM:SS
+    if (/^\d{2}\/\d{2}\/\d{4}/.test(trimmed)) {
+      const [datePart] = trimmed.split(" ");
+      const [dia, mes, ano] = datePart.split("/");
+      // Constrói no fuso local usando Date constructor com partes separadas
+      const d = new Date(Number(ano), Number(mes) - 1, Number(dia));
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // Formato ISO com hora: yyyy-mm-ddTHH:MM:SSZ — preserva data local subtraindo offset
+    if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) {
+      const d = new Date(trimmed);
+      if (isNaN(d.getTime())) return null;
+      // Converte para data local sem deslocar: usa os componentes locais
+      return d;
+    }
+
+    // Formato ISO sem hora: yyyy-mm-dd — interpreta como local, não UTC
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const [ano, mes, dia] = trimmed.split("-");
+      const d = new Date(Number(ano), Number(mes) - 1, Number(dia));
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // Fallback genérico
+    const d = new Date(trimmed);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
+}
+
+/**
+ * Retorna a string "yyyy-MM" no fuso local a partir de um objeto Date.
+ */
+function toMonthKey(d) {
+  if (!d || isNaN(d.getTime())) return null;
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  return `${ano}-${mes}`;
+}
+
+/**
+ * Formata uma data para exibição no card no formato pt-BR (ex: "03 abr").
+ */
+function formatCardDate(value) {
+  const d = parseDate(value);
+  if (!d) return "";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+}
 
 export default function Admin() {
   const router = useRouter();
@@ -28,26 +116,29 @@ export default function Admin() {
     const session = getSession();
     if (!session || session.role !== "admin") { router.push("/login"); return; }
     if (Date.now() - session.loginTime > 48 * 60 * 60 * 1000) { clearSession(); router.push("/login"); return; }
-    loadData().then(d => { 
-      setData(d); 
-      if (d.nomes) setNomes(prev => ({ ...prev, ...d.nomes })); 
-      setReady(true); 
+
+    loadData().then(d => {
+      setData(d);
+      if (d.nomes) setNomes(prev => ({ ...prev, ...d.nomes }));
+      setReady(true);
     });
   }, [router]);
 
-  const refresh = () => loadData().then(d => { 
-    setData(d); 
-    if (d.nomes) setNomes(prev => ({ ...prev, ...d.nomes })); 
+  const refresh = () => loadData().then(d => {
+    setData(d);
+    if (d.nomes) setNomes(prev => ({ ...prev, ...d.nomes }));
   });
-  
+
   const logout = () => { clearSession(); router.push("/login"); };
 
   const handleUpdateStatus = async (firebaseId, status, motivo) => {
     const extra = motivo ? { motivoCancelamento: motivo } : {};
     await updateStatus(firebaseId, status, extra);
-    setData(prev => ({ 
-      ...prev, 
-      indicacoes: prev.indicacoes.map(i => i._firebaseId === firebaseId ? { ...i, status, ...extra } : i) 
+    setData(prev => ({
+      ...prev,
+      indicacoes: prev.indicacoes.map(i =>
+        i._firebaseId === firebaseId ? { ...i, status, ...extra } : i
+      )
     }));
   };
 
@@ -58,11 +149,11 @@ export default function Admin() {
   };
 
   const handleSaveNomes = async () => { await saveNomes(nomes); setEditNomes(false); };
-  
-  const copyLink = pid => { 
-    navigator.clipboard.writeText(window.location.origin + "/form/" + pid); 
-    setCopied(pid); 
-    setTimeout(() => setCopied(null), 2000); 
+
+  const copyLink = pid => {
+    navigator.clipboard.writeText(window.location.origin + "/form/" + pid);
+    setCopied(pid);
+    setTimeout(() => setCopied(null), 2000);
   };
 
   const onDragEnd = result => {
@@ -76,101 +167,47 @@ export default function Admin() {
   const confirmarCancelamento = () => {
     if (!cancelModal) return;
     handleUpdateStatus(cancelModal, "Cancelado", cancelMotivo);
-    setCancelModal(null); 
+    setCancelModal(null);
     setCancelMotivo("");
   };
 
-const filtradas = data.indicacoes.filter(i => {
-    // CORREÇÃO: Verifica se o item existe e se tem o campo data
+  // Filtra indicações pelo mês selecionado usando parseDate robusto
+  const filtradas = data.indicacoes.filter(i => {
     if (!i || !i.data) return false;
-
-let d;
-
-if (i.data?.seconds) {
-  d = new Date(i.data.seconds * 1000);
-} else if (typeof i.data === "string" || typeof i.data === "number") {
-  d = new Date(i.data);
-} else {
-  return null;
-}
-
-    if (isNaN(d.getTime())) 
-      
-    return false;
-    const ano = d.getFullYear();
-    const mesItem = String(d.getMonth() + 1).padStart(2, "0");
-    const dataFormatada = `${ano}-${mesItem}`;
-
-    // ESTA LINHA É PARA VOCÊ TESTAR:
-    // Abra o site, aperte F12, vá em 'Console' e veja se os valores batem.
-    console.log("Item:", dataFormatada, "Filtro Selecionado:", mes);
-
-    return dataFormatada === mes;
+    const d = parseDate(i.data);
+    if (!d) return false;
+    return toMonthKey(d) === mes;
   });
 
   const canceladas = filtradas.filter(i => i.status === "Cancelado");
 
-  // Força o mês atual (ex: 2026-04) a estar sempre na lista
-const now = new Date();
-const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  // Gera lista de meses únicos presentes nas indicações, sempre incluindo o mês atual
+  const now = new Date();
+  const mesAtual = toMonthKey(now);
 
-const meses = [
- const now = new Date();
-const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const meses = [
+    ...new Set([
+      mesAtual,
+      ...data.indicacoes
+        .map(i => {
+          if (!i || !i.data) return null;
+          const d = parseDate(i.data);
+          return toMonthKey(d);
+        })
+        .filter(Boolean),
+    ]),
+  ]
+    .filter(Boolean)
+    .sort()
+    .reverse();
 
-const meses = [
-  ...new Set([
-    mesAtual,
-    ...data.indicacoes.map((i) => {
-      let d = null;
+  const cardStyle = {
+    background: "#fff",
+    border: "1px solid #E0E7E0",
+    borderRadius: 18,
+    boxShadow: "0 1px 4px #1B2E4B0A"
+  };
 
-      if (i?.data?.seconds) {
-        // Firebase Timestamp
-        d = new Date(i.data.seconds * 1000);
-      } else if (typeof i.data === "string") {
-        // tenta converter string
-        if (i.data.includes("/")) {
-          // formato BR: dd/mm/yyyy
-          const [dia, mes, ano] = i.data.split("/");
-          d = new Date(`${ano}-${mes}-${dia}`);
-        } else {
-          d = new Date(i.data);
-        }
-      } else if (i.data instanceof Date) {
-        d = i.data;
-      }
-
-      console.log("DATA ORIGINAL:", i.data);
-      console.log("DATA CONVERTIDA:", d, "VÁLIDA?", d && !isNaN(d.getTime()));
-
-      if (!d || isNaN(d.getTime())) return null;
-
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    }),
-  ]),
-]
-  .filter(Boolean)
-  .sort()
-  .reverse();
-
-      console.log("DATA ORIGINAL:", i.data);
-      console.log("DATA CONVERTIDA:", d, "VÁLIDA?", d && !isNaN(d.getTime()));
-
-      if (!d || isNaN(d.getTime())) return null;
-
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    }),
-  ]),
-]
-  .filter(Boolean)
-  .sort()
-  .reverse();
-
-return isNaN(d.getTime())
-  ? null
-  : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-})
-  const cardStyle = { background: "#fff", border: "1px solid #E0E7E0", borderRadius: 18, boxShadow: "0 1px 4px #1B2E4B0A" };
   if (!ready) return (
     <div style={{ minHeight: "100vh", background: "#F0F4F0", display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>
       Carregando...
@@ -182,17 +219,27 @@ return isNaN(d.getTime())
     return (
       <Draggable draggableId={ind._firebaseId} index={index}>
         {(provided, snapshot) => (
-          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-            style={{ 
+          <div
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            {...provided.dragHandleProps}
+            style={{
               background: snapshot.isDragging ? "#F0F9F0" : "#fff",
-              border: "1px solid #E0E7E0", borderRadius: 12, padding: "12px 14px", marginBottom: 8,
-              cursor: "grab", boxShadow: snapshot.isDragging ? "0 8px 24px #1B2E4B20" : "none",
-              ...provided.draggableProps.style 
-            }}>
+              border: "1px solid #E0E7E0",
+              borderRadius: 12,
+              padding: "12px 14px",
+              marginBottom: 8,
+              cursor: "grab",
+              boxShadow: snapshot.isDragging ? "0 8px 24px #1B2E4B20" : "none",
+              ...provided.draggableProps.style
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: "#1B2E4B" }}>{ind.nomeCompleto || ind.nome}</div>
-              <button onClick={() => handleDelete(ind._firebaseId)}
-                style={{ background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16, padding: "0 0 0 8px" }}>×</button>
+              <button
+                onClick={() => handleDelete(ind._firebaseId)}
+                style={{ background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16, padding: "0 0 0 8px" }}
+              >×</button>
             </div>
             <div style={{ color: "#888", fontSize: 11, marginBottom: 4 }}>{ind.telefone} · {ind.tipo}</div>
             {ind.email && <div style={{ color: "#aaa", fontSize: 10 }}>{ind.email}</div>}
@@ -201,7 +248,7 @@ return isNaN(d.getTime())
             {ind.obs && <div style={{ color: "#aaa", fontSize: 10, marginTop: 4, fontStyle: "italic" }}>{ind.obs}</div>}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
               <div style={{ color: "#4CAF50", fontSize: 10, fontWeight: 700 }}>{nomes[ind.parceiro] || p?.name}</div>
-              <div style={{ color: "#bbb", fontSize: 10 }}>{new Date(ind.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</div>
+              <div style={{ color: "#bbb", fontSize: 10 }}>{formatCardDate(ind.data)}</div>
             </div>
           </div>
         )}
@@ -212,18 +259,18 @@ return isNaN(d.getTime())
   return (
     <>
       <Head><title>CertificaPro - Admin</title></Head>
-      
+
       {cancelModal && (
         <div style={{ position: "fixed", inset: 0, background: "#00000060", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div style={{ background: "#fff", border: "1px solid #E0E7E0", borderRadius: 20, padding: "28px", width: "100%", maxWidth: 420, boxShadow: "0 8px 32px #1B2E4B20" }}>
             <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: "#1B2E4B" }}>Motivo do Cancelamento</h3>
             <p style={{ color: "#888", fontSize: 13, marginBottom: 20 }}>Descreva o motivo para cancelar.</p>
-            <textarea 
-              value={cancelMotivo} 
+            <textarea
+              value={cancelMotivo}
               onChange={e => setCancelMotivo(e.target.value)}
-              placeholder="Ex: Cliente desistiu..." 
+              placeholder="Ex: Cliente desistiu..."
               rows={3}
-              style={{ width: "100%", background: "#F5F7FA", border: "1px solid #D0D7DE", borderRadius: 10, padding: "12px 14px", color: "#1B2E4B", fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box" }} 
+              style={{ width: "100%", background: "#F5F7FA", border: "1px solid #D0D7DE", borderRadius: 10, padding: "12px 14px", color: "#1B2E4B", fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box" }}
             />
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button onClick={() => setCancelModal(null)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1px solid #E0E7E0", background: "#F5F7FA", color: "#666", fontSize: 14, cursor: "pointer" }}>Voltar</button>
@@ -253,7 +300,7 @@ return isNaN(d.getTime())
 
         <div style={{ padding: "20px 24px" }}>
           <div style={{ display: "flex", gap: 3, marginBottom: 24, background: "#fff", border: "1px solid #E0E7E0", borderRadius: 12, padding: 4, width: "fit-content" }}>
-            {[["kanban","Kanban"],["parceiros","Parceiros"]].map(([id,lbl]) => (
+            {[["kanban", "Kanban"], ["parceiros", "Parceiros"]].map(([id, lbl]) => (
               <button key={id} onClick={() => setTab(id)} style={{ padding: "8px 20px", borderRadius: 9, border: "none", background: tab === id ? "#1B2E4B" : "transparent", color: tab === id ? "#fff" : "#999", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>{lbl}</button>
             ))}
           </div>
@@ -262,7 +309,14 @@ return isNaN(d.getTime())
             <DragDropContext onDragEnd={onDragEnd}>
               <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 16, alignItems: "flex-start" }}>
                 {COLUNAS.map(col => {
-                  const cards = filtradas.filter(i => i.status === col.id).sort((a,b) => new Date(b.data)-new Date(a.data));
+                  const cards = filtradas
+                    .filter(i => i.status === col.id)
+                    .sort((a, b) => {
+                      const da = parseDate(a.data);
+                      const db = parseDate(b.data);
+                      return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+                    });
+
                   return (
                     <div key={col.id} style={{ minWidth: 240, maxWidth: 240, flexShrink: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -272,8 +326,11 @@ return isNaN(d.getTime())
                       </div>
                       <Droppable droppableId={col.id}>
                         {(provided, snapshot) => (
-                          <div ref={provided.innerRef} {...provided.droppableProps}
-                            style={{ minHeight: 80, background: snapshot.isDraggingOver ? col.bg : "#FAFAFA", border: "1px solid " + (snapshot.isDraggingOver ? col.border : "#E0E7E0"), borderRadius: 12, padding: 8, transition: "all 0.2s" }}>
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            style={{ minHeight: 80, background: snapshot.isDraggingOver ? col.bg : "#FAFAFA", border: "1px solid " + (snapshot.isDraggingOver ? col.border : "#E0E7E0"), borderRadius: 12, padding: 8, transition: "all 0.2s" }}
+                          >
                             {cards.map((ind, index) => <CardIndicacao key={ind._firebaseId} ind={ind} index={index} />)}
                             {provided.placeholder}
                           </div>
@@ -282,7 +339,7 @@ return isNaN(d.getTime())
                     </div>
                   );
                 })}
-                
+
                 {/* Coluna de Cancelados (Fixa) */}
                 <div style={{ minWidth: 240, maxWidth: 240, flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -292,24 +349,35 @@ return isNaN(d.getTime())
                   </div>
                   <Droppable droppableId="Cancelado">
                     {(provided, snapshot) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps}
-                        style={{ minHeight: 80, background: snapshot.isDraggingOver ? "#FFF5F5" : "#FAFAFA", border: "1px solid " + (snapshot.isDraggingOver ? "#FFCDD2" : "#E0E7E0"), borderRadius: 12, padding: 8, transition: "all 0.2s" }}>
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        style={{ minHeight: 80, background: snapshot.isDraggingOver ? "#FFF5F5" : "#FAFAFA", border: "1px solid " + (snapshot.isDraggingOver ? "#FFCDD2" : "#E0E7E0"), borderRadius: 12, padding: 8, transition: "all 0.2s" }}
+                      >
                         {canceladas.map((ind, index) => {
                           const p = PARTNERS.find(x => x.id === ind.parceiro);
                           return (
                             <Draggable key={ind._firebaseId} draggableId={ind._firebaseId} index={index}>
                               {(provided, snapshot) => (
-                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                                  style={{ background: "#fff", border: "1px solid #FFCDD2", borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "grab", ...provided.draggableProps.style }}>
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  style={{ background: "#fff", border: "1px solid #FFCDD2", borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "grab", ...provided.draggableProps.style }}
+                                >
                                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                                     <div style={{ fontWeight: 700, fontSize: 13, color: "#1B2E4B" }}>{ind.nomeCompleto || ind.nome}</div>
                                     <button onClick={() => handleDelete(ind._firebaseId)} style={{ background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16 }}>×</button>
                                   </div>
                                   <div style={{ color: "#888", fontSize: 11 }}>{ind.telefone} · {ind.tipo}</div>
-                                  {ind.motivoCancelamento && <div style={{ background: "#FFF5F5", border: "1px solid #FFCDD2", borderRadius: 6, padding: "6px 8px", color: "#C62828", fontSize: 10, marginTop: 6 }}>Motivo: {ind.motivoCancelamento}</div>}
+                                  {ind.motivoCancelamento && (
+                                    <div style={{ background: "#FFF5F5", border: "1px solid #FFCDD2", borderRadius: 6, padding: "6px 8px", color: "#C62828", fontSize: 10, marginTop: 6 }}>
+                                      Motivo: {ind.motivoCancelamento}
+                                    </div>
+                                  )}
                                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
                                     <div style={{ color: "#4CAF50", fontSize: 10, fontWeight: 700 }}>{nomes[ind.parceiro] || p?.name}</div>
-                                    <div style={{ color: "#bbb", fontSize: 10 }}>{new Date(ind.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</div>
+                                    <div style={{ color: "#bbb", fontSize: 10 }}>{formatCardDate(ind.data)}</div>
                                   </div>
                                 </div>
                               )}
@@ -343,6 +411,7 @@ return isNaN(d.getTime())
                   </div>
                 ))}
               </div>
+
               <div style={{ ...cardStyle, padding: 28 }}>
                 <h2 style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: "#1B2E4B" }}>Links dos Formulários</h2>
                 <p style={{ color: "#888", fontSize: 13, marginBottom: 22 }}>Envie para cada parceiro.</p>
@@ -354,12 +423,16 @@ return isNaN(d.getTime())
                         {typeof window !== "undefined" ? window.location.origin : ""}/form/{p.id}
                       </div>
                     </div>
-                    <button onClick={() => copyLink(p.id)} style={{
-                      background: copied === p.id ? "#F0F9F0" : "#fff",
-                      border: "1px solid " + (copied === p.id ? "#C8E6C9" : "#E0E7E0"),
-                      color: copied === p.id ? "#2E7D32" : "#1B2E4B",
-                      borderRadius: 8, padding: "8px 18px", fontSize: 13,
-                      cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap" }}>
+                    <button
+                      onClick={() => copyLink(p.id)}
+                      style={{
+                        background: copied === p.id ? "#F0F9F0" : "#fff",
+                        border: "1px solid " + (copied === p.id ? "#C8E6C9" : "#E0E7E0"),
+                        color: copied === p.id ? "#2E7D32" : "#1B2E4B",
+                        borderRadius: 8, padding: "8px 18px", fontSize: 13,
+                        cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap"
+                      }}
+                    >
                       {copied === p.id ? "Copiado!" : "Copiar Link"}
                     </button>
                   </div>
