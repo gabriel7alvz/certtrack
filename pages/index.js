@@ -84,12 +84,15 @@ const filtradas = data.indicacoes.filter(i => {
     // CORREÇÃO: Verifica se o item existe e se tem o campo data
     if (!i || !i.data) return false;
 
-    let d;
-    if (typeof i.data === "object" && i.data.seconds) {
-      d = new Date(i.data.seconds * 1000);
-    } else {
-      d = new Date(i.data);
-    }
+let d;
+
+if (i.data?.seconds) {
+  d = new Date(i.data.seconds * 1000);
+} else if (typeof i.data === "string" || typeof i.data === "number") {
+  d = new Date(i.data);
+} else {
+  return null;
+}
 
     if (isNaN(d.getTime())) return false;
 
