@@ -115,6 +115,10 @@ const now = new Date();
 const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
 const meses = [
+ const now = new Date();
+const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+const meses = [
   ...new Set([
     mesAtual,
     ...data.indicacoes.map((i) => {
@@ -135,6 +139,19 @@ const meses = [
       } else if (i.data instanceof Date) {
         d = i.data;
       }
+
+      console.log("DATA ORIGINAL:", i.data);
+      console.log("DATA CONVERTIDA:", d, "VÁLIDA?", d && !isNaN(d.getTime()));
+
+      if (!d || isNaN(d.getTime())) return null;
+
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    }),
+  ]),
+]
+  .filter(Boolean)
+  .sort()
+  .reverse();
 
       console.log("DATA ORIGINAL:", i.data);
       console.log("DATA CONVERTIDA:", d, "VÁLIDA?", d && !isNaN(d.getTime()));
