@@ -119,7 +119,16 @@ if (i.data?.seconds) {
       let d = (typeof i.data === "object" && i.data.seconds) 
         ? new Date(i.data.seconds * 1000) 
         : new Date(i.data);
-      return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      console.log("VALOR BRUTO:", i.data)
+
+let d;
+if (typeof i.data === "object" && i.data.seconds) {
+  d = new Date(i.data.seconds * 1000);
+} else {
+  d = new Date(i.data);
+}
+
+console.log("DATA CONVERTIDA:", d, "VÁLIDA?", !isNaN(d.getTime()))return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     })
   ])].filter(Boolean).sort().reverse();
   // -------------------------------------------------------
